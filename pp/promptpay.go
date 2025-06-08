@@ -30,6 +30,8 @@ const (
 	Country = "5802TH"
 	// Currency code (764 for THB)
 	Currency = "5303764"
+	// Currency symbol (THB)
+	CurrencySymbol = "54"
 	// Checksum template
 	CheckSum = "6304"
 
@@ -49,23 +51,48 @@ const (
 // It accepts an AccountType and an account number (phone number or national ID).
 // Returns the generated QR code string or an error if validation fails.
 func GenPromptpay(accountType AccountType, accountNumber string) (string, error) {
-	if accountType != AccountTypePhone && accountType != AccountTypeID {
-		return "", ErrInvalidAccountType
-	}
-
-	var accountInfo string
-	if accountType == AccountTypePhone {
-		accountInfo = MerchantAccountInfoForPhone + normalizePhoneNumber(accountNumber)
-	} else {
-		id, err := validateThaiID(accountNumber)
-		if err != nil {
-			return "", err
-		}
-		accountInfo = MerchantAccountInfoForID + id
+	accountInfo, err := validateAndFormatAccount(accountType, accountNumber)
+	if err != nil {
+		return "", err
 	}
 
 	raw := Version + QRType + MerchantAccountInfo + MerchantAccountInfoAID + accountInfo + Country + Currency + CheckSum
 	return raw + CRC16XMODEM(raw), nil
+}
+
+func GenPromptpayWithAmount(accountType AccountType, accountNumber string, amount float64) (string, error) {
+	accountInfo, err := validateAndFormatAccount(accountType, accountNumber)
+	if err != nil {
+		return "", err
+	}
+
+	raw := Version + QRType + MerchantAccountInfo + MerchantAccountInfoAID + accountInfo + Country + Currency +
+		formatAmount(amount) + CheckSum
+	return raw + CRC16XMODEM(raw), nil
+}
+
+// validateAndFormatAccount handles common account validation and formatting
+func validateAndFormatAccount(accountType AccountType, accountNumber string) (string, error) {
+	if accountType != AccountTypePhone && accountType != AccountTypeID {
+		return "", ErrInvalidAccountType
+	}
+
+	if accountType == AccountTypePhone {
+		return MerchantAccountInfoForPhone + normalizePhoneNumber(accountNumber), nil
+	}
+
+	id, err := validateThaiID(accountNumber)
+	if err != nil {
+		return "", err
+	}
+	return MerchantAccountInfoForID + id, nil
+}
+
+// formatAmount formats the amount for QR code generation
+func formatAmount(amount float64) string {
+	amountStr := fmt.Sprintf("%.2f", amount)
+	amountLength := fmt.Sprintf("%02d", len(amountStr))
+	return CurrencySymbol + amountLength + amountStr
 }
 
 // normalizePhoneNumber removes country code prefixes and leading zeros from phone numbers
