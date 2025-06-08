@@ -50,6 +50,18 @@ const (
 // GenPromptpay generates a QR code string for PromptPay based on the provided parameters.
 // It accepts an AccountType and an account number (phone number or national ID).
 // Returns the generated QR code string or an error if validation fails.
+// GenPromptpay generates a PromptPay QR code payload string based on the provided account type and account number.
+// It validates and formats the account information, constructs the raw payload according to the PromptPay specification,
+// and appends a CRC16-XMODEM checksum for integrity verification.
+// Returns the complete QR code payload string or an error if validation or formatting fails.
+//
+// Parameters:
+//   - accountType: The type of PromptPay account (e.g., mobile number, national ID, or e-wallet).
+//   - accountNumber: The account identifier corresponding to the account type.
+//
+// Returns:
+//   - string: The generated PromptPay QR code payload.
+//   - error: An error if the account information is invalid or formatting fails.
 func GenPromptpay(accountType AccountType, accountNumber string) (string, error) {
 	accountInfo, err := validateAndFormatAccount(accountType, accountNumber)
 	if err != nil {
@@ -60,6 +72,11 @@ func GenPromptpay(accountType AccountType, accountNumber string) (string, error)
 	return raw + CRC16XMODEM(raw), nil
 }
 
+// GenPromptpayWithAmount generates a PromptPay QR code payload string with a specified amount.
+// It takes the account type, account number, and amount as input parameters.
+// The function validates and formats the account information, constructs the QR payload,
+// calculates the CRC16-XMODEM checksum, and returns the complete payload string.
+// Returns an error if the account information is invalid or formatting fails.
 func GenPromptpayWithAmount(accountType AccountType, accountNumber string, amount float64) (string, error) {
 	accountInfo, err := validateAndFormatAccount(accountType, accountNumber)
 	if err != nil {
@@ -125,6 +142,15 @@ func validateThaiID(id string) (string, error) {
 
 // Find the checksum for the QR code using CRC-16 with static polynomial 0x1021 (XMODEM) and initial value 0xFFFF
 // CRC16XMODEM calculates the CRC-16/XMODEM checksum for the given string.
+// CRC16XMODEM calculates the CRC-16/XMODEM checksum for the given input string.
+// It returns the checksum as an uppercase hexadecimal string, zero-padded to 4 digits.
+// The algorithm uses the polynomial 0x1021 and an initial value of 0xFFFF.
+//
+// Example usage:
+//
+//	checksum := CRC16XMODEM("123456789") // returns "31C3"
+//
+// Reference: https://en.wikipedia.org/wiki/Cyclic_redundancy_check
 func CRC16XMODEM(data string) string {
 	crc := uint16(0xFFFF)
 	for _, c := range data {
